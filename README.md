@@ -35,9 +35,36 @@ Result: 85,748 verified, de-duplicated charging sessions, zero remaining nulls.
 5. **Environmental impact**: What's the cumulative estimated gasoline and GHG savings from this charging network, and how has that grown over time?
 6. **Idle/zero-energy rate**: What share of sessions deliver no measurable charge, and does this vary meaningfully by station (a potential signal of faulty hardware or user behavior)?
 
+## SQL Analysis
+
+Eight analytical queries written in standard SQL (SQLite 3.45, window functions fully supported). All queries run against the cleaned CSV via `run_queries.py` — no database server required.
+
+| Query | What it answers |
+|---|---|
+| Q1 — Year-over-year growth | Sessions and energy by year with `LAG()` window function for YoY % change |
+| Q2 — Top 10 busiest stations | Ranked by session count using `RANK()` window function |
+| Q3 — Peak demand heatmap | Sessions by day-of-week × hour; reveals clear 8 am–5 pm commuter pattern |
+| Q4 — Zero-energy rate by station | `CASE`/`SUM` to compute per-station idle rate; `COMM VITALITY / 2200 BROADWAY` highest at 35.7% |
+| Q5 — Session duration buckets | `CASE` bucketing + `SUM() OVER()` for % of total per bucket |
+| Q6 — Monthly cumulative energy | Running total with `SUM(SUM(...)) OVER (ORDER BY Year, Month)` |
+| Q7 — Cumulative environmental impact | Cumulative gasoline (91,165 gal) and GHG savings (463,669 kg CO₂) by year |
+| Q8 — Highest avg energy per session | `DENSE_RANK()` on avg kWh; excludes zero-energy sessions and low-volume stations |
+
+**Selected findings from Q7 (environmental impact):**
+
+| Year | Annual GHG saved (kg) | Cumulative GHG saved (kg) |
+|---|---|---|
+| 2018 | 20,215 | 20,215 |
+| 2020 | 17,459 | 74,272 (COVID dip visible) |
+| 2022 | 121,494 | 257,903 |
+| 2023 | 205,767 | **463,669** |
+
+To run: `python run_queries.py`
+
 ## Tech Stack
 
 - **Data cleaning**: Python (pandas)
+- **SQL analysis**: SQLite (via Python `sqlite3`) — `queries.sql` + `run_queries.py`
 - **Dashboard**: Power BI Desktop
 - **Source data**: City of Boulder Open Data Portal (public, CSV export)
 
@@ -45,7 +72,9 @@ Result: 85,748 verified, de-duplicated charging sessions, zero remaining nulls.
 
 - `raw_data.csv` — original export from the City of Boulder open data portal (not included in repo due to size; download link above)
 - `clean_data.py` — cleaning and transformation script
-- `ev_charging_boulder_clean.csv` — cleaned dataset used in the dashboard
+- `ev_charging_boulder_clean.csv` — cleaned dataset used in the dashboard (not included due to size; run `clean_data.py` to generate)
+- `queries.sql` — 8 analytical SQL queries (window functions, CTEs, aggregation)
+- `run_queries.py` — executes `queries.sql` against the CSV; no database server needed
 - `EV_Charging_Dashboard.pbix` — Power BI dashboard file
 
 ## Honest Limitations
